@@ -79,14 +79,52 @@ static const CGFloat SVProgressHUDLabelSpacing = 8.0f;
 #if !defined(SV_APP_EXTENSIONS)
 + (UIWindow *)mainWindow {
     if (@available(iOS 13.0, *)) {
-        for (UIWindowScene* windowScene in [UIApplication sharedApplication].connectedScenes) {
-            if (windowScene.activationState == UISceneActivationStateForegroundActive) {
+        for (UIScene *scene in [UIApplication sharedApplication].connectedScenes) {
+            if (![scene isKindOfClass:[UIWindowScene class]]) {
+                continue;
+            }
+
+            UIWindowScene *windowScene = (UIWindowScene *)scene;
+            if (windowScene.activationState == UISceneActivationStateForegroundActive &&
+                [windowScene.session.role isEqualToString:UIWindowSceneSessionRoleApplication]) {
+                for (UIWindow *window in windowScene.windows) {
+                    if (window.isKeyWindow) {
+                        return window;
+                    }
+                }
+                if (windowScene.windows.count > 0) {
+                    return windowScene.windows.firstObject;
+                }
+            }
+        }
+
+        // Fallback: return first available app scene regardless of activation state.
+        for (UIScene *scene in [UIApplication sharedApplication].connectedScenes) {
+            if (![scene isKindOfClass:[UIWindowScene class]]) {
+                continue;
+            }
+
+            UIWindowScene *windowScene = (UIWindowScene *)scene;
+            if (![windowScene.session.role isEqualToString:UIWindowSceneSessionRoleApplication]) {
+                continue;
+            }
+
+            for (UIWindow *window in windowScene.windows) {
+                if (window.isKeyWindow) {
+                    return window;
+                }
+            }
+            if (windowScene.windows.count > 0) {
                 return windowScene.windows.firstObject;
             }
         }
-        // If a window has not been returned by now, the first scene's window is returned (regardless of activationState).
-        UIWindowScene *windowScene = (UIWindowScene *)[[UIApplication sharedApplication].connectedScenes allObjects].firstObject;
-        return windowScene.windows.firstObject;
+
+        for (UIWindow *window in [UIApplication sharedApplication].windows) {
+            if (window.isKeyWindow) {
+                return window;
+            }
+        }
+        return [UIApplication sharedApplication].windows.firstObject;
     } else {
 #if TARGET_OS_IOS
         return [[[UIApplication sharedApplication] delegate] window];
@@ -94,6 +132,8 @@ static const CGFloat SVProgressHUDLabelSpacing = 8.0f;
         return [UIApplication sharedApplication].keyWindow;
 #endif
     }
+
+    return nil;
 }
 #endif
 
